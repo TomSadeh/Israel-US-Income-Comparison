@@ -4,52 +4,7 @@ from scipy import interpolate
 import math
 import streamlit as st
 import bidi.algorithm as bidi  # For RTL text handling in plots
-    # Apply specific CSS fixes for RTL mode to ensure proper display
-    if is_rtl:
-        st.markdown("""
-        <style>
-            /* Fix number inputs in RTL */
-            input[type="number"] {
-                text-align: right !important;
-                direction: ltr !important;
-            }
-            
-            /* Fix checkbox labels in RTL mode */
-            .stCheckbox {
-                display: flex !important;
-                flex-direction: row-reverse !important;
-                justify-content: flex-end !important;
-            }
-            
-            /* Fix radio buttons in RTL mode */
-            .stRadio > div {
-                flex-direction: row-reverse !important;
-            }
-            
-            /* Fix button text alignment in RTL */
-            .stButton button {
-                direction: rtl !important;
-                text-align: center !important;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-    
-    # Apply a specific button CSS for proper RTL alignment
-    if is_rtl:
-        button_css = """
-        <style>
-            button[kind="primary"] { 
-                float: right !important;
-            }
-        </style>
-        """
-        st.markdown(button_css, unsafe_allow_html=True)import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy import interpolate
-import math
-import bidi.algorithm as bidi  # For RTL text handling in plots
-
+   
 # Set page configuration
 st.set_page_config(
     page_title="Israel-US Income Position Calculator",
