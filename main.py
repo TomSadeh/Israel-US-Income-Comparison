@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import math
+import streamlit as st
 import bidi.algorithm as bidi  # For RTL text handling in plots
 
 # Set page configuration
