@@ -4,6 +4,51 @@ from scipy import interpolate
 import math
 import streamlit as st
 import bidi.algorithm as bidi  # For RTL text handling in plots
+    # Apply specific CSS fixes for RTL mode to ensure proper display
+    if is_rtl:
+        st.markdown("""
+        <style>
+            /* Fix number inputs in RTL */
+            input[type="number"] {
+                text-align: right !important;
+                direction: ltr !important;
+            }
+            
+            /* Fix checkbox labels in RTL mode */
+            .stCheckbox {
+                display: flex !important;
+                flex-direction: row-reverse !important;
+                justify-content: flex-end !important;
+            }
+            
+            /* Fix radio buttons in RTL mode */
+            .stRadio > div {
+                flex-direction: row-reverse !important;
+            }
+            
+            /* Fix button text alignment in RTL */
+            .stButton button {
+                direction: rtl !important;
+                text-align: center !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    # Apply a specific button CSS for proper RTL alignment
+    if is_rtl:
+        button_css = """
+        <style>
+            button[kind="primary"] { 
+                float: right !important;
+            }
+        </style>
+        """
+        st.markdown(button_css, unsafe_allow_html=True)import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import interpolate
+import math
+import bidi.algorithm as bidi  # For RTL text handling in plots
 
 # Set page configuration
 st.set_page_config(
@@ -768,36 +813,25 @@ class IncomeDistributionComparator:
         # Create the output table with annual or monthly values
         divider = 1 if period == "annual" else 12
         
-        # Handle RTL for column headers - only for display
+        # Create the table with proper column names
         if self.is_rtl:
-            # Use python-bidi to handle RTL text
-            column_names = {
-                'Percentile': bidi.get_display(texts["percentile"]),
-                f'{title_prefix}US Income (USD)': bidi.get_display(texts["us_income"].format(title_prefix)),
-                f'{title_prefix}Israel Income (ILS)': bidi.get_display(texts["il_income_ils"].format(title_prefix)),
-                f'{title_prefix}Israel Income (USD PPP)': bidi.get_display(texts["il_income_usd"].format(title_prefix)),
-                'Ratio (US/Israel)': bidi.get_display(texts["ratio"])
-            }
+            # Create a table with Hebrew column names, properly displayed RTL
+            table = pd.DataFrame({
+                texts["percentile"]: filtered_data['Percentile'],
+                texts["us_income"].format(title_prefix): filtered_data[us_col] / divider,
+                texts["il_income_ils"].format(title_prefix): filtered_data[ils_col] / divider,
+                texts["il_income_usd"].format(title_prefix): filtered_data[usd_ppp_col] / divider,
+                texts["ratio"]: filtered_data[us_col] / filtered_data[usd_ppp_col]
+            })
         else:
-            column_names = {
-                'Percentile': texts["percentile"],
-                f'{title_prefix}US Income (USD)': texts["us_income"].format(title_prefix),
-                f'{title_prefix}Israel Income (ILS)': texts["il_income_ils"].format(title_prefix),
-                f'{title_prefix}Israel Income (USD PPP)': texts["il_income_usd"].format(title_prefix),
-                'Ratio (US/Israel)': texts["ratio"]
-            }
-        
-        # Create the table with original column names first (for data processing)
-        table = pd.DataFrame({
-            'Percentile': filtered_data['Percentile'],
-            f'{title_prefix}US Income (USD)': filtered_data[us_col] / divider,
-            f'{title_prefix}Israel Income (ILS)': filtered_data[ils_col] / divider,
-            f'{title_prefix}Israel Income (USD PPP)': filtered_data[usd_ppp_col] / divider,
-            'Ratio (US/Israel)': filtered_data[us_col] / filtered_data[usd_ppp_col]
-        })
-        
-        # Rename the columns for display only
-        table = table.rename(columns=column_names)
+            # Create with English column names
+            table = pd.DataFrame({
+                'Percentile': filtered_data['Percentile'],
+                f'{title_prefix}US Income (USD)': filtered_data[us_col] / divider,
+                f'{title_prefix}Israel Income (ILS)': filtered_data[ils_col] / divider,
+                f'{title_prefix}Israel Income (USD PPP)': filtered_data[usd_ppp_col] / divider,
+                'Ratio (US/Israel)': filtered_data[us_col] / filtered_data[usd_ppp_col]
+            })
         
         return table
 
@@ -1109,13 +1143,26 @@ def main():
     if is_rtl:
         tab_style = """
         <style>
+            /* Override tab container for RTL */
             div[data-testid="stTabs"] > div:nth-child(1) > div:nth-child(1) {
-                display: flex;
+                display: flex !important;
                 flex-direction: row-reverse !important;
             }
+            
+            /* Override individual tab buttons and active tab selection */
             button[data-baseweb="tab"] {
-                margin-left: 10px;
+                margin-left: 10px !important;
                 margin-right: 0px !important;
+            }
+            
+            /* Fix the tab content container */
+            div[data-testid="stTabs"] > div:nth-child(2) {
+                direction: rtl !important;
+            }
+            
+            /* Fix the underline indicator on active tab */
+            div[data-testid="stTabs"] > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div[role="tablist"] {
+                flex-direction: row-reverse !important;
             }
         </style>
         """
@@ -1166,11 +1213,12 @@ def main():
     
     # Format the table for display
     display_table = percentile_table.copy()
+    
     # Find the column names dynamically since they might include 'Standardized' prefix or be translated
     for col in display_table.columns:
-        if 'USD' in col:
+        if 'USD' in col or '(USD)' in col:  # Handle both English and Hebrew column names
             display_table[col] = display_table[col].apply(lambda x: f"${x:,.0f}")
-        elif 'ILS' in col:
+        elif 'ILS' in col or '(ILS)' in col:  # Handle both English and Hebrew column names
             display_table[col] = display_table[col].apply(lambda x: f"₪{x:,.0f}")
         elif 'Ratio' in col or 'יחס' in col:  # Handle both English and Hebrew column names
             display_table[col] = display_table[col].apply(lambda x: f"{x:.2f}")
@@ -1179,43 +1227,94 @@ def main():
     standardized_label = t["standardized_a"] if standardize else ""
     
     if is_rtl:
-        st.write(f"<div dir='rtl' style='text-align:right;'><b>{t['income_at_key'].format(period_label, standardized_label)}</b></div>", unsafe_allow_html=True)
+        # Fix the table header display in RTL mode with explicit HTML/CSS
+        st.markdown(f"""
+        <div dir="rtl" style="text-align:right;">
+        <b>{t['income_at_key'].format(period_label, standardized_label)}</b>
+        </div>
+        
+        <style>
+        /* Fix table headers in RTL mode */
+        .dataframe thead th {{
+            text-align: right !important;
+            direction: rtl !important;
+        }}
+        
+        .dataframe tbody td {{
+            text-align: right !important;
+            direction: rtl !important;
+        }}
+        
+        /* Fix the table cell alignment */
+        .dataframe {{
+            direction: rtl !important;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Force the CSS to apply to this specific table
+        with st.container():
+            st.table(display_table)
     else:
         st.write(f"**{t['income_at_key'].format(period_label, standardized_label)}**")
-    
-    # Use a CSS-styled wrapper to ensure proper RTL table display
-    if is_rtl:
-        st.markdown("<div dir='rtl' style='text-align:right;'>", unsafe_allow_html=True)
-        st.table(display_table)
-        st.markdown("</div>", unsafe_allow_html=True)
-    else:
         st.table(display_table)
     
     # Methodology and Notes
     with st.expander(t["methodology"]):
-        # For Hebrew, we use HTML to ensure proper RTL display of markdown content
+        # For Hebrew, we need to fix markdown rendering with HTML
         if is_rtl:
             st.markdown(f"""
             <div dir="rtl" style="text-align: right;">
             <h3>{t["data_sources"]}</h3>
             
-            {t["data_sources_text"]}
+            <ul>
+              <li><strong>מקורות נתונים</strong>: כלי זה משתמש בנתוני אחוזוני הכנסה מקובץ data.csv שסופק.</li>
+              <li><strong>המרת PPP</strong>: הכנסות ישראליות מומרות לדולר באמצעות שער שווי כוח הקנייה (PPP) שנבחר.</li>
+              <li><strong>תקנון הכנסה</strong>: כאשר נבחר, ההכנסה מתוקננת על ידי חלוקה בשורש הריבועי של גודל משק הבית.</li>
+              <li><strong>סוג ההתפלגות</strong>: הכלי יכול להשתמש בהתפלגויות הכנסה גולמיות של משקי בית או בהתפלגויות מתוקננות לנפש.</li>
+            </ul>
             
             <h3>{t["square_root"]}</h3>
             
-            {t["square_root_text"]}
+            <p>סולם השורש הריבועי מחלק את הכנסת משק הבית בשורש הריבועי של גודל משק הבית כדי להתחשב ביתרונות לגודל:</p>
+            
+            <ul>
+              <li>עבור משק בית של אדם אחד: לחלק ב-√1 = 1 (ללא שינוי)</li>
+              <li>עבור משק בית של 2 אנשים: לחלק ב-√2 ≈ 1.414</li>
+              <li>עבור משק בית של 3 אנשים: לחלק ב-√3 ≈ 1.732</li>
+              <li>עבור משק בית של 4 אנשים: לחלק ב-√4 = 2</li>
+            </ul>
+            
+            <p>גישה זו, המשמשת את ה-OECD וכלכלנים רבים, מכירה בכך שמשקי בית גדולים יותר נהנים מיתרונות לגודל בצריכה.</p>
             
             <h3>{t["data_file"]}</h3>
             
-            {t["data_file_text"]}
+            <p>להשוואות המדויקות ביותר, קובץ data.csv צריך לכלול הן התפלגויות הכנסה גולמיות והן מתוקננות:</p>
+            
+            <ul>
+              <li>עמודות הכנסה גולמית: <code>Percentile</code>, <code>US_Income_USD</code>, <code>Israel_Income_ILS</code></li>
+              <li>עמודות הכנסה מתוקננת: <code>US_Std_Income_USD</code>, <code>Israel_Std_Income_ILS</code></li>
+            </ul>
+            
+            <p>אם עמודות מתוקננות אינן זמינות, הכלי יחשב הכנסות מתוקננות באופן ידני.</p>
             
             <h3>{t["limitations"]}</h3>
             
-            {t["limitations_text"]}
+            <p>ניתוח זה אינו מתחשב בהבדלים ב:</p>
+            <ul>
+              <li>מערכות מס</li>
+              <li>הטבות ושירותים חברתיים</li>
+              <li>יוקר המחיה באזורים שונים של כל מדינה</li>
+              <li>הרכב משק הבית (גיל וכו')</li>
+            </ul>
             
             <h3>{t["interpretation_header"]}</h3>
             
-            {t["interpretation_text"]}
+            <p>מיקום האחוזון מציין היכן הכנסה נמצאת בהתפלגות של כל מדינה. לדוגמה,
+            להיות באחוזון ה-75 פירושו שההכנסה שלך גבוהה יותר מ-75% ממשקי הבית באותה מדינה.</p>
+            
+            <p>מיקום אחוזון דומה בשתי המדינות מרמז על כך שהמעמד הכלכלי היחסי שלך יהיה
+            דומה בכל אחת מהמדינות, בעוד שהבדל משמעותי מצביע על כך שהמיקום היחסי שלך ישתנה.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
