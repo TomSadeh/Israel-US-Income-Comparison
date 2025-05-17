@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import interpolate
@@ -210,6 +209,8 @@ similar in either country, while a substantial difference indicates that your re
 def get_custom_css(is_rtl=False):
     dir_attr = "rtl" if is_rtl else "ltr"
     text_align = "right" if is_rtl else "left"
+    float_dir = "right" if is_rtl else "left"
+    opposite_float = "left" if is_rtl else "right"
     
     return f"""
     <style>
@@ -256,24 +257,87 @@ def get_custom_css(is_rtl=False):
             text-align: center;
             direction: {dir_attr};
         }}
-        /* RTL specific styling */
-        [dir="rtl"] {{
-            unicode-bidi: embed;
+        
+        /* RTL specific styling - more aggressive */
+        .stMarkdown, .css-10trblm, .css-183lzff, .css-1aehpvj {{
+            direction: {dir_attr} !important;
+            text-align: {text_align} !important;
         }}
-        [dir="rtl"] .stButton {{
-            direction: rtl;
-            float: right;
+        
+        /* Fix for tabs */
+        [data-testid="stTabs"] > div:nth-child(1) > div:nth-child(1) {{
+            direction: {dir_attr} !important;
         }}
-        [dir="rtl"] div.row-widget.stRadio > div {{
-            flex-direction: row-reverse;
+        
+        /* Fix for captions */
+        .element-container .stMarkdown p {{
+            direction: {dir_attr} !important;
+            text-align: {text_align} !important;
         }}
-        [dir="rtl"] .stCheckbox {{
-            direction: rtl;
+        
+        /* Fix for tables */
+        [data-testid="stTable"] table {{
+            direction: {dir_attr} !important;
         }}
-        /* Fix number input for RTL */
-        [dir="rtl"] input[type="number"] {{
-            direction: ltr;
-            text-align: right;
+        
+        [data-testid="stTable"] th {{
+            text-align: {text_align} !important;
+        }}
+        
+        [data-testid="stTable"] td {{
+            text-align: {text_align} !important;
+        }}
+        
+        /* Fix for checkboxes - flip them */
+        [data-testid="stCheckbox"] {{
+            direction: {dir_attr} !important;
+        }}
+        
+        [data-testid="stCheckbox"] > label > div {{
+            display: flex !important;
+            flex-direction: row{'-reverse' if is_rtl else ''} !important;
+        }}
+        
+        /* Fix for radio buttons */
+        div.row-widget.stRadio > div {{
+            flex-direction: row{'-reverse' if is_rtl else ''} !important;
+        }}
+        
+        /* Fix for number inputs */
+        [data-testid="stNumberInput"] > div {{
+            flex-direction: row{'-reverse' if is_rtl else ''} !important;
+        }}
+        
+        [data-testid="stNumberInput"] label {{
+            text-align: {text_align} !important;
+        }}
+        
+        [data-testid="stNumberInput"] input {{
+            text-align: {text_align} !important;
+        }}
+        
+        /* Fix for expanders */
+        .streamlit-expanderHeader {{
+            flex-direction: row{'-reverse' if is_rtl else ''} !important;
+            justify-content: space-between !important;
+        }}
+        
+        /* Fix for sidebar */
+        section[data-testid="stSidebar"] {{
+            direction: {dir_attr} !important;
+        }}
+        
+        section[data-testid="stSidebar"] .block-container {{
+            direction: {dir_attr} !important;
+        }}
+        
+        section[data-testid="stSidebar"] button {{
+            float: {float_dir} !important;
+        }}
+        
+        section[data-testid="stSidebar"] .stSelectbox label {{
+            direction: {dir_attr} !important;
+            text-align: {text_align} !important;
         }}
     </style>
     """
@@ -767,6 +831,16 @@ def main():
         "עברית": "he"  # Hebrew
     }
     
+    # Apply a baseline CSS that makes everything RTL-friendly when needed
+    st.markdown("""
+    <style>
+        /* Override Streamlit's default hiding of HTML */
+        .element-container iframe {
+            margin: 0 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Add a language selector to the sidebar
     lang_options = list(available_languages.keys())
     selected_lang_name = st.sidebar.selectbox("Language / שפה", lang_options, index=0)
@@ -1030,22 +1104,50 @@ def main():
     else:
         st.markdown(f'<div class="sub-header">{t["visual_analysis"]}</div>', unsafe_allow_html=True)
     
+    # Fix tabs in RTL mode using custom HTML/CSS
+    if is_rtl:
+        tab_style = """
+        <style>
+            div[data-testid="stTabs"] > div:nth-child(1) > div:nth-child(1) {
+                display: flex;
+                flex-direction: row-reverse !important;
+            }
+            button[data-baseweb="tab"] {
+                margin-left: 10px;
+                margin-right: 0px !important;
+            }
+        </style>
+        """
+        st.markdown(tab_style, unsafe_allow_html=True)
+    
     tab1, tab2 = st.tabs([t["your_position"], t["income_distributions"]])
     
     with tab1:
-        st.pyplot(comparator.plot_income_comparison(
+        fig = comparator.plot_income_comparison(
             calculation_income_usd, 
             period=income_period.lower(), 
             standardized=standardize,
             lang=selected_lang
-        ))
+        )
+        st.pyplot(fig)
         std_text = t["standardized_space"] if standardize else ""
-        st.caption(t["chart_shows_where"].format(std_text))
+        
+        # Use HTML for captions to ensure proper RTL support
+        if is_rtl:
+            st.markdown(f"<div dir='rtl' style='text-align:right;'>{t['chart_shows_where'].format(std_text)}</div>", unsafe_allow_html=True)
+        else:
+            st.caption(t["chart_shows_where"].format(std_text))
     
     with tab2:
-        st.pyplot(comparator.plot_income_distributions(standardize, selected_lang))
+        fig = comparator.plot_income_distributions(standardize, selected_lang)
+        st.pyplot(fig)
         std_text = t["standardized_space"].strip() + " " if standardize else ""
-        st.caption(t["chart_shows_dist"].format(std_text))
+        
+        # Use HTML for captions to ensure proper RTL support
+        if is_rtl:
+            st.markdown(f"<div dir='rtl' style='text-align:right;'>{t['chart_shows_dist'].format(std_text)}</div>", unsafe_allow_html=True)
+        else:
+            st.caption(t["chart_shows_dist"].format(std_text))
     
     
     # Additional Context
@@ -1076,35 +1178,67 @@ def main():
     standardized_label = t["standardized_a"] if standardize else ""
     
     if is_rtl:
-        st.write(f"**{t['income_at_key'].format(period_label, standardized_label)}**")
+        st.write(f"<div dir='rtl' style='text-align:right;'><b>{t['income_at_key'].format(period_label, standardized_label)}</b></div>", unsafe_allow_html=True)
     else:
         st.write(f"**{t['income_at_key'].format(period_label, standardized_label)}**")
     
-    st.table(display_table)
+    # Use a CSS-styled wrapper to ensure proper RTL table display
+    if is_rtl:
+        st.markdown("<div dir='rtl' style='text-align:right;'>", unsafe_allow_html=True)
+        st.table(display_table)
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.table(display_table)
     
     # Methodology and Notes
     with st.expander(t["methodology"]):
-        st.markdown(f"""
-        ### {t["data_sources"]}
-        
-        {t["data_sources_text"]}
-        
-        ### {t["square_root"]}
-        
-        {t["square_root_text"]}
-        
-        ### {t["data_file"]}
-        
-        {t["data_file_text"]}
-        
-        ### {t["limitations"]}
-        
-        {t["limitations_text"]}
-        
-        ### {t["interpretation_header"]}
-        
-        {t["interpretation_text"]}
-        """)
+        # For Hebrew, we use HTML to ensure proper RTL display of markdown content
+        if is_rtl:
+            st.markdown(f"""
+            <div dir="rtl" style="text-align: right;">
+            <h3>{t["data_sources"]}</h3>
+            
+            {t["data_sources_text"]}
+            
+            <h3>{t["square_root"]}</h3>
+            
+            {t["square_root_text"]}
+            
+            <h3>{t["data_file"]}</h3>
+            
+            {t["data_file_text"]}
+            
+            <h3>{t["limitations"]}</h3>
+            
+            {t["limitations_text"]}
+            
+            <h3>{t["interpretation_header"]}</h3>
+            
+            {t["interpretation_text"]}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            ### {t["data_sources"]}
+            
+            {t["data_sources_text"]}
+            
+            ### {t["square_root"]}
+            
+            {t["square_root_text"]}
+            
+            ### {t["data_file"]}
+            
+            {t["data_file_text"]}
+            
+            ### {t["limitations"]}
+            
+            {t["limitations_text"]}
+            
+            ### {t["interpretation_header"]}
+            
+            {t["interpretation_text"]}
+            """)
     
     # Footer
     st.markdown(f"""
