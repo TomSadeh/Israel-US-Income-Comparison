@@ -621,7 +621,7 @@ def main():
     # Visualizations
     st.markdown('<div class="sub-header">Visual Analysis</div>', unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["Income Distributions", "Your Position"])
+    tab1, tab2 = st.tabs(["Your Position", "Income Distributions"])
     
     with tab1:
         st.pyplot(comparator.plot_income_comparison(
