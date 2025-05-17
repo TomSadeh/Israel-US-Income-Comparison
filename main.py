@@ -1,11 +1,7 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from scipy import interpolate
-import io
-import base64
 import math
 
 # Set page configuration
@@ -464,7 +460,7 @@ def main():
     if currency_option == "USD":
         if income_period == "Annual":
             income_usd = st.number_input(
-                "Enter your annual household income (USD):",
+                "Enter your annual total household income before taxes (USD):",
                 min_value=0,
                 max_value=10000000,
                 value=50000,
@@ -479,7 +475,7 @@ def main():
             monthly_income_ils = income_ils / 12
         else:  # Monthly
             income_usd = st.number_input(
-                "Enter your monthly household income (USD):",
+                "Enter your monthly total household income before taxes (USD):",
                 min_value=0,
                 max_value=1000000,
                 value=4000,
@@ -495,7 +491,7 @@ def main():
     else:  # ILS
         if income_period == "Annual":
             income_ils = st.number_input(
-                "Enter your annual household income (ILS):",
+                "Enter your annual total household income before taxes (ILS):",
                 min_value=0,
                 max_value=30000000,
                 value=int(50000 * ppp_rate),
@@ -510,7 +506,7 @@ def main():
             monthly_income_ils = income_ils / 12
         else:  # Monthly
             income_ils = st.number_input(
-                "Enter your monthly household income (ILS):",
+                "Enter your monthly total household income before taxes (ILS):",
                 min_value=0,
                 max_value=2500000,
                 value=int(4000 * ppp_rate),
