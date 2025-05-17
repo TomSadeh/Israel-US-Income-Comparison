@@ -839,8 +839,9 @@ def main():
     
     # Language selection
     available_languages = {
-        "English": "en",
-        "עברית": "he"  # Hebrew
+       
+      "עברית": "he",  # Hebrew
+     "English": "en"
     }
     
     # Apply a baseline CSS that makes everything RTL-friendly when needed
