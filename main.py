@@ -299,14 +299,23 @@ def get_custom_css(is_rtl=False):
             flex-direction: row{'-reverse' if is_rtl else ''} !important;
         }}
         
-        /* Fix for radio buttons */
-        div.row-widget.stRadio > div {{
-            flex-direction: row{'-reverse' if is_rtl else ''} !important;
+        /* Fix labels for number inputs in RTL */
+        [data-testid="stNumberInput"] label {{
+            direction: rtl !important;
+            text-align: right !important;
+            width: 100% !important;
         }}
         
-        /* Fix for number inputs */
-        [data-testid="stNumberInput"] > div {{
-            flex-direction: row{'-reverse' if is_rtl else ''} !important;
+        /* Fix radio button labels and ensure proper alignment */
+        div.row-widget.stRadio label {{
+            direction: rtl !important;
+            text-align: right !important;
+        }}
+        
+        /* Fix checkbox label alignment */
+        [data-testid="stCheckbox"] label p {{
+            direction: rtl !important;
+            text-align: right !important;
         }}
         
         [data-testid="stNumberInput"] label {{
@@ -317,10 +326,22 @@ def get_custom_css(is_rtl=False):
             text-align: {text_align} !important;
         }}
         
-        /* Fix for expanders */
+        /* Fix expander arrows direction in RTL */
         .streamlit-expanderHeader {{
-            flex-direction: row{'-reverse' if is_rtl else ''} !important;
-            justify-content: space-between !important;
+            flex-direction: row-reverse !important;
+        }}
+        
+        .streamlit-expanderHeader svg {{
+            transform: rotate(180deg);
+            margin-left: 0 !important;
+            margin-right: 0.25rem !important;
+        }}
+        
+        /* Fix expander content in RTL */
+        .streamlit-expanderContent {{
+            direction: rtl !important;
+            text-align: right !important;
+        
         }}
         
         /* Fix for sidebar */
@@ -340,6 +361,7 @@ def get_custom_css(is_rtl=False):
             direction: {dir_attr} !important;
             text-align: {text_align} !important;
         }}
+        
     </style>
     """
 
@@ -1213,13 +1235,47 @@ def main():
     else:
         st.write(f"**{t['income_at_key'].format(period_label, standardized_label)}**")
         st.table(display_table)
-    
+    if is_rtl:
+        st.markdown("""
+        <style>
+        .main .block-container {
+            direction: rtl !important;
+        }
+        
+        details {
+            direction: rtl !important;
+        }
+        
+        details summary {
+            display: flex !important;
+            flex-direction: row-reverse !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        
+        details summary::-webkit-details-marker {
+            display: none !important;
+        }
+        
+        details summary::after {
+            content: "◀" !important;
+            font-size: 1.2em !important;
+            margin-right: 10px !important;
+        }
+        
+        details[open] summary::after {
+            content: "▼" !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
     # Methodology and Notes
-    with st.expander(t["methodology"]):
-        # For Hebrew, we need to fix markdown rendering with HTML
-        if is_rtl:
+    if is_rtl:
+        # Create a custom RTL-friendly expander with HTML
+        expanded = st.checkbox("הצג מתודולוגיה והערות", value=False, key="methodology_expander")
+        
+        if expanded:
             st.markdown(f"""
-            <div dir="rtl" style="text-align: right;">
+            <div dir="rtl" style="text-align: right; padding: 1rem; background-color: #f8f9fa; border-radius: 0.5rem; margin-bottom: 1rem;">
             <h3>{t["data_sources"]}</h3>
             
             <ul>
@@ -1272,7 +1328,8 @@ def main():
             דומה בכל אחת מהמדינות, בעוד שהבדל משמעותי מצביע על כך שהמיקום היחסי שלך ישתנה.</p>
             </div>
             """, unsafe_allow_html=True)
-        else:
+    else:
+        with st.expander(t["methodology"]):
             st.markdown(f"""
             ### {t["data_sources"]}
             
@@ -1294,13 +1351,13 @@ def main():
             
             {t["interpretation_text"]}
             """)
-    
-    # Footer
-    st.markdown(f"""
-    <div class="footer" {dir_attr}>
-    {t["footer"]}
-    </div>
-    """, unsafe_allow_html=True)
+        
+        # Footer
+        st.markdown(f"""
+        <div class="footer" {dir_attr}>
+        {t["footer"]}
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
